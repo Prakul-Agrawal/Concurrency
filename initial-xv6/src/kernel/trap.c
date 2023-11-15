@@ -47,7 +47,29 @@ void usertrap(void)
   // save user program counter.
   p->trapframe->epc = r_sepc();
 
-  if (r_scause() == 8)
+uint64 stack_pointer_val = p->trapframe->sp;
+uint64 rounded_down_stack_pointer_val = PGROUNDDOWN(stack_pointer_val);
+uint64 superviser_trap_val = r_stval();
+
+    if(r_scause() == 15 || r_scause() == 13)
+    {
+        if(superviser_trap_val>MAXVA-1){
+            p->killed = 1;
+        }
+        else if (superviser_trap_val>rounded_down_stack_pointer_val-PGSIZE-1){
+            if (superviser_trap_val<rounded_down_stack_pointer_val+1){
+                p->killed = 1;
+            }
+            else{
+                p->killed = uvmcopycow(p->pagetable,superviser_trap_val);
+            }
+        }
+        else{
+            p->killed = uvmcopycow(p->pagetable,superviser_trap_val);
+        }
+    }
+
+  else if (r_scause() == 8)
   {
     // system call
 
